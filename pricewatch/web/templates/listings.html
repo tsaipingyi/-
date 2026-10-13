@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}監視対象 | 価格監視{% endblock %}
+{% block content %}
+<div class="panel">
+  <h3 style="margin-top:0">一括登録（今のスプレッドシートをそのまま読み込めます）</h3>
+  <form method="post" action="{{ url_for('import_listings') }}" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".xlsx,.xlsm,.csv">
+    <button>読み込む</button>
+    <p class="muted" style="margin-bottom:0">列: 販売商品URL（必須）・サイト・店舗・商品名・アラート価格1・アラート価格2・ポイント率（任意）。
+      同じ URL × 店舗は上書き更新されます。</p>
+  </form>
+</div>
+
+<div class="panel">
+  <h3 style="margin-top:0">1件追加</h3>
+  <form method="post" action="{{ url_for('add_listing') }}" style="display:flex;flex-wrap:wrap;gap:8px">
+    <input name="url" placeholder="販売商品URL" size="40" required>
+    <input name="product" placeholder="商品名" size="16">
+    <input name="shop" placeholder="店舗（価格.comは必須）" size="18">
+    <input name="site" placeholder="サイト（空欄で自動判定）" size="16">
+    <input name="alert_price1" placeholder="アラート価格1" size="10">
+    <input name="alert_price2" placeholder="アラート価格2" size="10">
+    <input name="point_rate" placeholder="ポイント率%（任意）" size="12">
+    <button>追加</button>
+  </form>
+</div>
+
+<div style="overflow:auto">
+<table>
+  <thead><tr><th>ID</th><th>サイト</th><th>店舗</th><th>商品名</th><th>URL</th><th>アラート1</th><th>アラート2</th><th>ポイント率</th><th>状態</th><th></th></tr></thead>
+  <tbody>
+  {% for l in listings %}
+    <tr {% if not l.active %}class="muted"{% endif %}>
+      <td class="num">{{ l.id }}</td>
+      <td>{{ l.site }}</td>
+      <td><a href="{{ url_for('history', lid=l.id) }}">{{ l.shop }}</a></td>
+      <td>{{ l.product }}</td>
+      <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis"><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.url }}</a></td>
+      <td class="num">{{ l.alert_price1|yen }}</td>
+      <td class="num">{{ l.alert_price2|yen }}</td>
+      <td class="num">{{ '' if l.point_rate is none else l.point_rate ~ '%' }}</td>
+      <td>{{ '監視中' if l.active else '停止中' }}</td>
+      <td>
+        <form method="post" action="{{ url_for('toggle_listing', lid=l.id) }}" class="inline">
+          <button class="secondary">{{ '停止' if l.active else '再開' }}</button></form>
+        <form method="post" action="{{ url_for('delete_listing', lid=l.id) }}" class="inline"
+              onsubmit="return confirm('削除すると履歴も消えます。よろしいですか？')">
+          <button class="danger">削除</button></form>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="10" class="muted">まだ登録がありません</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

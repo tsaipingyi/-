@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ l.shop }} | 価格監視{% endblock %}
+{% block content %}
+<div class="panel">
+  <h3 style="margin:0 0 6px">{{ l.site }} / {{ l.shop }} — {{ l.product }}</h3>
+  <a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.url }}</a>
+  <p class="muted" style="margin-bottom:0">アラート価格1: {{ l.alert_price1|yen or '-' }} ／ アラート価格2: {{ l.alert_price2|yen or '-' }}</p>
+</div>
+<table>
+  <thead><tr><th>取得時刻</th><th>商品価格</th><th>ポイント</th><th>商品価格-ポイント</th><th>在庫</th><th>エラー</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ r.checked_at[:16].replace('T', ' ') }}</td>
+      <td class="num">{{ r.price|yen }}</td>
+      <td class="num">{{ r.points|yen }}</td>
+      <td class="num"><b>{{ r.effective|yen }}</b></td>
+      <td>{{ {1: 'あり', 0: 'なし'}.get(r.in_stock, '-') }}</td>
+      <td class="muted">{{ r.error or '' }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="muted">履歴がありません</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}価格監視{% endblock %}</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --ink: #1f2328; --muted: #656d76; --line: #d0d7de;
+    --head: #ddebf7; --down: #ffc0cb; --up: #a8dcf0; --low: #d1242f; --hl: #ffff00; --accent: #0969da;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
+         background: var(--bg); color: var(--ink); font-size: 14px; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px;
+           display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  header nav a { margin-right: 12px; color: var(--accent); text-decoration: none; }
+  header .status { margin-left: auto; color: var(--muted); font-size: 13px; }
+  main { padding: 16px; }
+  .flash { background: #fff8c5; border: 1px solid #d4a72c; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+  button, .btn { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 6px 12px;
+                 cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; }
+  button.secondary, .btn.secondary { background: #eaeef2; color: var(--ink); border: 1px solid var(--line); }
+  button.danger { background: #cf222e; }
+  input, select { font-size: 13px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; }
+  table { border-collapse: collapse; background: var(--panel); }
+  th, td { border: 1px solid var(--line); padding: 3px 6px; white-space: nowrap; }
+  th { background: var(--head); font-weight: 600; font-size: 12px; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .inline { display: inline; }
+</style>
+</head>
+<body>
+<header>
+  <h1>商品価格監視</h1>
+  <nav>
+    <a href="{{ url_for('index') }}">価格推移</a>
+    <a href="{{ url_for('listings') }}">監視対象</a>
+  </nav>
+  <form method="post" action="{{ url_for('check') }}" class="inline">
+    <button {% if running %}disabled{% endif %}>今すぐ確認</button>
+  </form>
+  <span class="status" id="status">{{ status }}</span>
+</header>
+<main>
+  {% with messages = get_flashed_messages() %}
+    {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<script>
+  // 確認中は状態を定期更新し、終わったら再読み込み
+  (function poll(wasRunning) {
+    fetch("{{ url_for('status') }}").then(r => r.json()).then(s => {
+      document.getElementById("status").textContent = s.status;
+      if (wasRunning && !s.running) { location.reload(); return; }
+      if (s.running) setTimeout(() => poll(true), 3000);
+    }).catch(() => {});
+  })({{ 'true' if running else 'false' }});
+</script>
+</body>
+</html>

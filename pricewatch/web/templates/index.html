@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .grid-wrap { overflow: auto; max-height: calc(100vh - 210px); border: 1px solid var(--line); border-radius: 8px; }
+  .grid th { position: sticky; top: 0; z-index: 2; }
+  .grid thead tr:nth-child(2) th { top: 23px; }
+  .grid .sticky { position: sticky; left: 0; background: var(--panel); z-index: 1;
+                  width: 140px; min-width: 140px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+  .grid th.sticky { z-index: 3; background: var(--head); }
+  .grid .sticky2 { position: sticky; left: 140px; background: var(--panel); z-index: 1; }
+  .grid th.sticky2 { z-index: 3; background: var(--head); }
+  .grid td.p { font-weight: 700; min-width: 86px; }
+  .grid td.down { background: var(--down); }
+  .grid td.up { background: var(--up); }
+  .grid td.low { color: var(--low); }
+  .grid td.hl { background: var(--hl) !important; }
+  .grid td.na { color: var(--muted); font-weight: 400; text-align: center; }
+  .grid td.url { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+  .grid td.shop { min-width: 120px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+  .legend span { display: inline-block; padding: 1px 8px; margin-right: 8px; border: 1px solid var(--line); border-radius: 4px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+</style>
+
+<div class="panel controls">
+  <form method="get" class="controls">
+    <label>商品
+      <select name="product" onchange="this.form.submit()">
+        <option value="">すべて</option>
+        {% for p in products %}<option {% if p == product %}selected{% endif %}>{{ p }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>表示回数
+      <select name="runs" onchange="this.form.submit()">
+        {% for n in (6, 12, 24, 48, 96) %}<option value="{{ n }}" {% if n == runs %}selected{% endif %}>直近 {{ n }} 回</option>{% endfor %}
+      </select>
+    </label>
+  </form>
+  <label>価格が <input id="hlPrice" size="8" inputmode="numeric" placeholder="例 16414"> のセルをハイライト</label>
+  <label>さらに ± <input id="hlTol" size="6" inputmode="numeric" placeholder="例 100"></label>
+  <a class="btn secondary" href="{{ url_for('export', product=product or '', runs=runs) }}">Excel 出力</a>
+</div>
+
+<p class="legend muted">
+  <span style="background:var(--down)">値下げ</span>
+  <span style="background:var(--up)">値上げ</span>
+  <span style="color:var(--low);font-weight:700">同商品の最安値</span>
+  <span>空欄 = 取得できず／在庫なし</span>
+  表示価格は「商品価格 − ポイント」
+</p>
+
+{% if not m.rows %}
+  <div class="panel">監視対象がありません。<a href="{{ url_for('listings') }}">監視対象</a>から登録してください。</div>
+{% elif not m.runs %}
+  <div class="panel">まだ価格を取得していません。「今すぐ確認」を押してください。</div>
+{% else %}
+<div class="grid-wrap">
+<table class="grid">
+  <thead>
+    <tr>
+      <th class="sticky" rowspan="2">サイト</th><th class="sticky2" rowspan="2">店舗</th>
+      <th rowspan="2">商品名</th><th rowspan="2">販売商品URL</th>
+      <th rowspan="2">アラート価格1</th><th rowspan="2">アラート価格2</th>
+      {% for h in m.headers %}<th>{{ h }}</th>{% endfor %}
+    </tr>
+    <tr>{% for h in m.headers %}<th>商品価格-ポイント</th>{% endfor %}</tr>
+  </thead>
+  <tbody>
+  {% for row in m.rows %}
+    {% set l = row.listing %}
+    <tr>
+      <td class="sticky">{{ l.site }}</td>
+      <td class="sticky2 shop" title="{{ l.shop }}"><a href="{{ url_for('history', lid=l.id) }}">{{ l.shop }}</a></td>
+      <td>{{ l.product }}</td>
+      <td class="url"><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.url }}</a></td>
+      <td class="num">{{ l.alert_price1|yen }}</td>
+      <td class="num">{{ l.alert_price2|yen }}</td>
+      {% for c in row.cells %}
+        {% if c.value is none %}
+          <td class="p na" title="{{ c.error or '' }}"></td>
+        {% else %}
+          <td class="num p {{ c.change or '' }} {{ 'low' if c.lowest }}" data-v="{{ c.value }}"
+              title="価格 {{ c.price|yen }} / ポイント {{ c.points|yen }}{{ ' / アラート価格割れ' if c.below_alert }}">{{ c.value|yen }}</td>
+        {% endif %}
+      {% endfor %}
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<script>
+  const P = document.getElementById("hlPrice"), T = document.getElementById("hlTol");
+  function num(el) { const v = el.value.replace(/[,，¥￥\s]/g, ""); return v === "" ? null : Number(v); }
+  function apply() {
+    const p = num(P), t = num(T) || 0;
+    try { localStorage.setItem("pw-hl", JSON.stringify([P.value, T.value])); } catch (e) {}
+    document.querySelectorAll("td[data-v]").forEach(td => {
+      td.classList.toggle("hl", p !== null && Math.abs(Number(td.dataset.v) - p) <= t);
+    });
+  }
+  try { const s = JSON.parse(localStorage.getItem("pw-hl") || "null"); if (s) { P.value = s[0]; T.value = s[1]; } } catch (e) {}
+  P.addEventListener("input", apply); T.addEventListener("input", apply); apply();
+</script>
+{% endblock %}

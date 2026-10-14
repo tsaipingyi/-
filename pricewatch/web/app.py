@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import hmac
+import os
+import shutil
 import tempfile
 from pathlib import Path
 
-from flask import Flask, abort, flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask import Flask, Response, abort, flash, jsonify, redirect, render_template, request, send_file, url_for
 
 from ..db import Database
 from ..importer import import_file
@@ -20,9 +23,20 @@ def _int_or_none(v: str | None) -> int | None:
     return parse_yen(v) if v and v.strip() else None
 
 
-def create_app(db: Database, checker: Checker) -> Flask:
+def create_app(db: Database, checker: Checker, password: str | None = None) -> Flask:
     app = Flask(__name__)
-    app.secret_key = "pricewatch-local"  # flash メッセージ用（ローカル利用前提）
+    app.secret_key = os.environ.get("PRICEWATCH_SECRET") or os.urandom(24)  # flash メッセージ用
+    password = password if password is not None else os.environ.get("PRICEWATCH_PASSWORD", "")
+
+    @app.before_request
+    def require_password():
+        """PRICEWATCH_PASSWORD を設定すると画面を開くときにパスワードを求める（ユーザー名は任意）。"""
+        if not password:
+            return None
+        auth = request.authorization
+        if auth and auth.password and hmac.compare_digest(auth.password, password):
+            return None
+        return Response("パスワードが必要です", 401, {"WWW-Authenticate": 'Basic realm="pricewatch"'})
 
     @app.template_filter("yen")
     def yen(v):
@@ -64,16 +78,17 @@ def create_app(db: Database, checker: Checker) -> Flask:
         if not file or not file.filename:
             flash("ファイルを選択してください")
             return redirect(url_for("listings"))
-        suffix = Path(file.filename).suffix or ".csv"
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-            file.save(tmp.name)
+        # Windows では開いたままの一時ファイルに別ハンドルで書けないので、ディレクトリを作って保存する
+        tmp_dir = Path(tempfile.mkdtemp())
+        tmp = tmp_dir / ("upload" + (Path(file.filename).suffix or ".csv"))
+        file.save(tmp)
         try:
-            n = import_file(db, tmp.name)
+            n = import_file(db, tmp)
             flash(f"{n} 件を登録/更新しました")
         except ValueError as exc:
             flash(str(exc))
         finally:
-            Path(tmp.name).unlink(missing_ok=True)
+            shutil.rmtree(tmp_dir, ignore_errors=True)
         return redirect(url_for("listings"))
 
     @app.post("/listings/<int:lid>/toggle")

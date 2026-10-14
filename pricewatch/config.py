@@ -30,6 +30,8 @@ class Settings:
     use_browser: bool
     auto_browser: bool
     interval_minutes: int
+    host: str
+    port: int
     slack_webhook: str | None
     discord_webhook: str | None
     line_token: str | None
@@ -51,6 +53,8 @@ def load_settings() -> Settings:
         use_browser=_bool("PRICEWATCH_BROWSER"),
         auto_browser=_bool("PRICEWATCH_AUTO_BROWSER"),
         interval_minutes=int(env("PRICEWATCH_INTERVAL", "60")),
+        host=env("PRICEWATCH_HOST", "127.0.0.1"),
+        port=int(env("PRICEWATCH_PORT", "8000")),
         slack_webhook=env("SLACK_WEBHOOK_URL"),
         discord_webhook=env("DISCORD_WEBHOOK_URL"),
         line_token=env("LINE_CHANNEL_ACCESS_TOKEN"),

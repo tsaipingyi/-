@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from pathlib import Path
 
 from .config import Settings
 from .db import Database
@@ -43,6 +44,7 @@ class Checker:
             run_id, events = run_check(self.db, fetcher, listings=listings, notify=self.notifier, progress=progress)
             self.status = f"完了 (run #{run_id}, 変動 {len(events)} 件)"
             log.info(self.status)
+            self._backup()
             return True
         except Exception:
             log.exception("巡回に失敗しました")
@@ -51,6 +53,16 @@ class Checker:
         finally:
             fetcher.close()
             self._lock.release()
+
+    def _backup(self) -> None:
+        if self.db.path == ":memory:":
+            return
+        try:
+            dest = self.db.backup(Path(self.db.path).parent / "backups")
+            if dest:
+                log.info("バックアップしました: %s", dest)
+        except Exception:
+            log.exception("バックアップに失敗しました")
 
     def check_in_background(self) -> bool:
         if self.running:

@@ -23,7 +23,12 @@
 ヤマダウェブコム、ECカレント、ソフマップ、Joshin、エディオン、Nojima、e-best、特価COM
 （其他网站也会尝试从 JSON-LD / meta 标签获取价格）。
 
-## 安装
+## Windows 用户
+
+请看 **[WINDOWS.md](WINDOWS.md)**：双击 `setup.bat` 安装 → `start.bat` 启动 → `open.bat` 打开画面，
+`autostart-on.bat` 设置开机自动运行。
+
+## 安装（Mac / Linux）
 
 ```bash
 python -m venv .venv && source .venv/bin/activate

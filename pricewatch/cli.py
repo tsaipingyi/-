@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from pathlib import Path
 
 from .config import load_settings
 from .db import Database
@@ -54,8 +55,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--product")
 
     p = sub.add_parser("serve", help="Web 画面を起動（定期確認も同時に実行）")
-    p.add_argument("--host", default="127.0.0.1")
-    p.add_argument("--port", type=int, default=8000)
+    p.add_argument("--host", help="既定: PRICEWATCH_HOST または 127.0.0.1（家の他の端末から見るなら 0.0.0.0）")
+    p.add_argument("--port", type=int, help="既定: PRICEWATCH_PORT または 8000")
     p.add_argument("--interval", type=int, help="定期確認の間隔（分）。0 で無効")
 
     p = sub.add_parser("test-url", help="1つの URL を取得・解析して結果を表示（セレクタ調整用）")
@@ -105,6 +106,7 @@ def main(argv: list[str] | None = None) -> int:
         finally:
             fetcher.close()
         print(summarize(events) if events else "変動はありません")
+        db.backup(Path(settings.db_path).parent / "backups")
     elif args.cmd == "run":
         interval = args.interval or settings.interval_minutes
         print(f"{interval} 分ごとに確認します（Ctrl+C で停止）")
@@ -123,7 +125,9 @@ def main(argv: list[str] | None = None) -> int:
         if interval > 0:
             checker.start_background_loop(interval)
             print(f"{interval} 分ごとに自動確認します")
-        create_app(db, checker).run(host=args.host, port=args.port, threaded=True)
+        host, port = args.host or settings.host, args.port or settings.port
+        print(f"画面: http://127.0.0.1:{port}/")
+        create_app(db, checker).run(host=host, port=port, threaded=True)
     return 0
 
 

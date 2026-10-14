@@ -179,6 +179,24 @@ class Database:
         r = self.conn.execute(sql, (listing_id, before_run_id)).fetchone()
         return dict(r) if r else None
 
+    def backup(self, dest_dir: str | Path, keep: int = 30) -> Path | None:
+        """data/backups/pricewatch-YYYYMMDD.db に1日1回コピーし、古いものは keep 個だけ残す。"""
+        if self.path == ":memory:":
+            return None
+        dest_dir = Path(dest_dir)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / f"pricewatch-{now_jst():%Y%m%d}.db"
+        if dest.exists():
+            return None
+        target = sqlite3.connect(dest)
+        try:
+            self.conn.backup(target)
+        finally:
+            target.close()
+        for old in sorted(dest_dir.glob("pricewatch-*.db"))[:-keep]:
+            old.unlink(missing_ok=True)
+        return dest
+
     def history(self, listing_id: int, limit: int = 200) -> list[dict]:
         rows = self.conn.execute(
             "SELECT * FROM snapshots WHERE listing_id=? ORDER BY run_id DESC LIMIT ?", (listing_id, limit)

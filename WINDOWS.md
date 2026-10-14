@@ -9,11 +9,13 @@
 
 ## 1. 安装
 
-双击 **`setup.bat`**。第一次需要几分钟，看到「安装完成！」就好了。
+双击 **`setup.bat`**。第一次需要几分钟，看到 **`SETUP OK`** 就好了。
+
+> 为了在中文版、日文版 Windows 上都不出乱码，这些 .bat 窗口里的提示都是英文。
 
 ## 2. 导入你的价格表
 
-1. 双击 **`start.bat`** 启动（会出现一个黑色窗口，**不要关掉它**，关掉就停止监控）
+1. 双击 **`start.bat`** 启动（会出现一个黑色窗口，显示 `pricewatch is RUNNING`。**不要关掉它**，关掉就停止监控）
 2. 双击 **`open.bat`**，浏览器会打开监控画面
 3. 点上方的「監視対象」→「一括登録」，选择你现在的 Excel 表格 → 「読み込む」
    - 表格里需要有「販売商品URL」这一列（你现在的表格就有）；「サイト」「店舗」「商品名」「アラート価格1/2」也会一起读进来
@@ -28,7 +30,7 @@
 双击 **`autostart-on.bat`**。
 
 - 以后登录 Windows 后会自动启动（窗口最小化在任务栏）
-- 它会问你要不要「插着电源时不睡眠」，**建议选 Y**，电脑睡眠时监控会停止
+- 它会用英文问你要不要「插着电源时不睡眠」（Also stop this PC from sleeping...），**建议按 Y**，电脑睡眠时监控会停止
 - 不想自动启动了：双击 `autostart-off.bat`
 
 另外建议在 Windows 设置里打开**自动登录**或者不要注销，否则开机后要先登录才会开始监控。
@@ -74,6 +76,6 @@
 | --- | --- |
 | 双击 setup.bat 说找不到 Python | 重新安装 Python，并勾选 “Add python.exe to PATH” |
 | open.bat 打开后显示「无法访问此网站」 | `start.bat` 没有在运行，先双击它 |
-| 黑色窗口不停显示「程序停止了」 | 看 `data\server.log` 最后几行；常见原因是 8000 端口被占用，在 `.env` 里改 `PRICEWATCH_PORT=8001`（open.bat 里的地址也要改） |
+| 黑色窗口显示 `pricewatch STOPPED` | 窗口里会显示 `data\server.log` 的最后几行，截图发给 Claude |
 | 某些行一直是空白 | 那个网站没取到价格，用 `check-now.bat` 看原因，把 URL 发给 Claude |
 | Amazon 一直取不到 | Amazon 拦截很严格，见 README 的「Amazon」说明 |

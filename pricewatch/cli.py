@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import socket
 import sys
 from pathlib import Path
 
@@ -65,6 +66,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--html", help="取得の代わりに保存済み HTML ファイルを解析")
 
     args = ap.parse_args(argv)
+    _utf8_console()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     settings = load_settings()
@@ -125,10 +127,36 @@ def main(argv: list[str] | None = None) -> int:
         if interval > 0:
             checker.start_background_loop(interval)
             print(f"{interval} 分ごとに自動確認します")
-        host, port = args.host or settings.host, args.port or settings.port
-        print(f"画面: http://127.0.0.1:{port}/")
+        host = args.host or settings.host
+        port = _free_port(host, args.port or settings.port)
+        url = f"http://127.0.0.1:{port}/"
+        # open.bat がこのファイルを読んでブラウザを開く（ポートを変えた場合も追従）
+        (Path(settings.db_path).parent / "url.txt").write_text(url + "\n", encoding="ascii")
+        print(f"画面: {url}", flush=True)
         create_app(db, checker).run(host=host, port=port, threaded=True)
     return 0
+
+
+def _utf8_console() -> None:
+    """Windows でログをファイルに書くと cp932/GBK になり、文字によっては落ちるので UTF-8 に固定。"""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
+def _free_port(host: str, port: int, tries: int = 20) -> int:
+    """指定ポートが使用中（Windows では Hyper-V 等の予約もある）なら次の空きポートを使う。"""
+    for p in range(port, port + tries):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((host, p))
+            except OSError:
+                logging.warning("ポート %d は使えないため次を試します", p)
+                continue
+            return p
+    return port
 
 
 def _test_url(args, settings) -> int:
